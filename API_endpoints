@@ -1,0 +1,73 @@
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+# Sample data for doctors and appointments
+doctors = [
+    {
+        "id": 1,
+        "name": "Dr. Smith",
+        "specialty": "Cardiologist",
+        "available_days": ["Monday", "Wednesday", "Friday"],
+        "max_patients_per_day": 5,
+    },
+    {
+        "id": 2,
+        "name": "Dr. Johnson",
+        "specialty": "Dermatologist",
+        "available_days": ["Tuesday", "Thursday"],
+        "max_patients_per_day": 4,
+    },
+]
+
+appointments = []
+
+@app.route('/api/doctors', methods=['GET'])
+def get_doctors():
+    return jsonify(doctors)
+
+@app.route('/api/doctors/<int:doctor_id>', methods=['GET'])
+def get_doctor(doctor_id):
+    doctor = next((doc for doc in doctors if doc["id"] == doctor_id), None)
+    if doctor:
+        return jsonify(doctor)
+    else:
+        return jsonify({"error": "Doctor not found"}), 404
+
+@app.route('/api/appointments', methods=['POST'])
+def book_appointment():
+    data = request.json
+    doctor_id = data.get('doctor_id')
+    appointment_date = data.get('appointment_date')
+
+    doctor = next((doc for doc in doctors if doc["id"] == doctor_id), None)
+    if not doctor:
+        return jsonify({"error": "Doctor not found"}), 404
+
+    if appointment_date not in doctor["available_days"]:
+        return jsonify({"error": "Doctor is not available on this date"}), 400
+
+    # Check if the doctor's schedule for this date is full
+    appointments_count = len([apt for apt in appointments if apt["doctor_id"] == doctor_id and apt["appointment_date"] == appointment_date])
+    if appointments_count >= doctor["max_patients_per_day"]:
+        return jsonify({"error": "Doctor's schedule is full for this date"}), 400
+
+    # Book the appointment
+    appointment = {
+        "doctor_id": doctor_id,
+        "appointment_date": appointment_date,
+        "patient_name": data.get('patient_name'),
+    }
+    appointments.append(appointment)
+
+    return jsonify({"message": "Appointment booked successfully", "appointment": appointment}), 201
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+This is a simplified Flask application for the outpatient appointment system with the following endpoints:
+/api/doctors (GET): Retrieve a list of doctors.
+/api/doctors/<int:doctor_id> (GET): Retrieve details for a specific doctor.
+/api/appointments (POST): Book an appointment with a doctor.
+Please note that this is a basic implementation for demonstration purposes, and in a real-world scenario, you would likely have a database to store and retrieve doctor and appointment information. Additionally, you would implement authentication and validation for security and data integrity.
